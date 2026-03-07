@@ -1,0 +1,8 @@
+
+services:
+  prediction-service:
+    build: .
+    container_name: prediction-service
+    ports:
+      - "8010:8010"
+    restart: always
