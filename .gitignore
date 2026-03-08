@@ -1,0 +1,32 @@
+# Python virtual environment
+venv
+venv311
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Environment variables
+.env
+
+# Mac system files
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints
+
+# Pytest cache
+.pytest_cache/
+
+# Coverage reports
+.coverage
+htmlcov/
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# Docker
+*.pid
