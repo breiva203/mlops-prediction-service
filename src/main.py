@@ -1,143 +1,85 @@
-from fastapi import FastAPI, HTTPException, Request
-from contextlib import asynccontextmanager
-import numpy as np
-import logging
+# src/main.py
+import os
+import pickle
+import pandas as pd
+from fastapi import FastAPI
+from src.models import CustomerData  # your Pydantic model
 
-from prometheus_fastapi_instrumentator import Instrumentator
+app = FastAPI()
 
-from .config import get_settings
-from .model import load_model
-from .schemas import PredictionRequest, PredictionResponse
+# ===============================
+# Paths
+# ===============================
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root
 
+MODEL_PATH = os.path.join(BASE_DIR, "models", "churn_model.pkl")
+PREPROCESS_PATH = os.path.join(BASE_DIR, "models", "preprocessing.pkl")
 
-# ==============================
-# Logging Configuration
-# ==============================
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
-)
+# ===============================
+# Load model artifacts
+# ===============================
+with open(MODEL_PATH, "rb") as f:
+    model = pickle.load(f)
 
-logger = logging.getLogger("prediction-service")
+with open(PREPROCESS_PATH, "rb") as f:
+    preprocessing = pickle.load(f)
 
+label_encoders = preprocessing["label_encoders"]
+scaler = preprocessing["scaler"]
+categorical_cols = preprocessing["categorical_cols"]
+numerical_cols = preprocessing["numerical_cols"]
+feature_columns = preprocessing["feature_columns"]
 
-# ==============================
-# Load configuration
-# ==============================
-settings = get_settings()
-model = None
+# ===============================
+# Preprocessing function
+# ===============================
+def preprocess_input(data: dict) -> pd.DataFrame:
+    df = pd.DataFrame([data])
 
+    for col in categorical_cols:
+        df[col] = label_encoders[col].transform(df[col])
 
-# ==============================
-# Modern Lifespan (Startup + Shutdown)
-# ==============================
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """
-    Handles application startup and shutdown.
-    Replaces deprecated @app.on_event("startup").
-    """
-    global model
+    df[numerical_cols] = scaler.transform(df[numerical_cols])
 
-    # ---- Startup ----
-    logger.info("Application starting")
-    logger.info(f"App name: {settings.app_name}")
-    logger.info(f"Version: {settings.version}")
-    logger.info(f"Model: {settings.model_name} v{settings.model_version}")
+    df = df[feature_columns]
 
-    try:
-        model = load_model()
-        logger.info("Model loaded successfully")
-    except Exception as e:
-        logger.error(f"Model failed to load: {e}")
-        raise
+    return df
 
-    yield  # Application runs here
-
-    # ---- Shutdown ----
-    logger.info("Application shutting down")
-    model = None
-
-
-# ==============================
-# FastAPI App
-# ==============================
-app = FastAPI(
-    title=settings.app_name,
-    version=settings.version,
-    debug=settings.debug,
-    lifespan=lifespan
-)
-
-
-# ==============================
-# Prometheus Metrics
-# ==============================
-Instrumentator().instrument(app).expose(app)
-
-
-# ==============================
-# Request Logging Middleware
-# ==============================
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-
-    logger.info(f"Incoming request: {request.method} {request.url}")
-
-    response = await call_next(request)
-
-    logger.info(f"Response status: {response.status_code}")
-
-    return response
-
-
-# ==============================
-# Health Check
-# ==============================
+# ===============================
+# Health & Readiness endpoints
+# ===============================
 @app.get("/health")
 def health():
-    logger.info("Health check requested")
     return {"status": "healthy"}
 
-
-# ==============================
-# Readiness Check
-# ==============================
-@app.get("/ready")
+@app.get("/readiness")
 def readiness():
-
-    logger.info("Readiness check requested")
-
-    if model is None:
-        logger.warning("Readiness check failed: model not loaded")
-        raise HTTPException(status_code=503, detail="Model not loaded")
-
     return {"status": "ready"}
 
+# ===============================
+# Single prediction endpoint
+# ===============================
+@app.post("/predict")
+async def predict(customer: CustomerData):
+    # Use model_dump() for Pydantic v2
+    df = preprocess_input(customer.model_dump())
+    prediction = model.predict(df)[0]
+    probability = model.predict_proba(df)[0][1]
 
-# ==============================
-# Prediction Endpoint
-# ==============================
-@app.post("/predict", response_model=PredictionResponse)
-def predict(request: PredictionRequest):
+    return {
+        "churn_prediction": int(prediction),
+        "churn_probability": float(probability)
+    }
 
-    logger.info(
-        f"Prediction request received | feature1={request.feature1}, feature2={request.feature2}"
-    )
+# ===============================
+# Batch prediction endpoint
+# ===============================
+@app.post("/batch-predict")
+async def batch_predict(customers: list[CustomerData]):
+    results = []
+    for c in customers:
+        df = preprocess_input(c.model_dump())
+        prediction = model.predict(df)[0]
+        results.append(int(prediction))
 
-    if model is None:
-        logger.error("Prediction requested but model not loaded")
-        raise HTTPException(status_code=503, detail="Model not loaded")
-
-    try:
-        features = np.array([[request.feature1, request.feature2]])
-
-        prediction = model.predict(features)[0]
-
-        logger.info(f"Prediction generated: {prediction}")
-
-        return PredictionResponse(prediction=float(prediction))
-
-    except Exception as e:
-        logger.error(f"Prediction failed: {e}")
-        raise HTTPException(status_code=500, detail="Prediction failed")
+    return {"predictions": results}

@@ -20,4 +20,4 @@ flake8==7.0.0
 mypy==1.8.0
 
 # Security scanning (for CI/CD)
-safety==3.0.1
+safety>=3.1.0
