@@ -1,19 +1,19 @@
-# Python virtual environment
-venv
-venv311
+# Python virtual environments
+venv/
+venv311/
 
 # Python cache
 __pycache__/
-*.pyc
+*.py[cod]
 
 # Environment variables
 .env
 
-# Mac system files
+# macOS system files
 .DS_Store
 
 # Jupyter
-.ipynb_checkpoints
+.ipynb_checkpoints/
 
 # Pytest cache
 .pytest_cache/
