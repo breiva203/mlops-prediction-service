@@ -82,21 +82,7 @@ Deploy the selected trained model as a production-ready **FastAPI** REST API. Us
 - Implement asynchronous endpoints for better performance
 - Implement middleware for CORS, logging, and error handling
 
-#### 2.3 Deployment: Choose ONE Option
-
-**You must choose EITHER Option A (Kubernetes) OR Option B (Docker Compose) - NOT BOTH**
-
-##### Option A: Kubernetes Deployment
-
-**Task:**
-- Create basic Kubernetes manifests:
-  - **Deployment**: Define replicas and resource limits
-  - **Service**: Expose the API
-  - **ConfigMap**: Store configuration parameters
-- Set up readiness and liveness probes
-- Deploy to a Kubernetes cluster (local minikube/kind or cloud AKS/EKS/GKE)
-
-##### Option B: Docker Compose Deployment
+#### 2.3 Deployment: Docker Compose Deployment
 
 **Task:**
 - Create a `docker-compose.yml` file:
@@ -129,10 +115,6 @@ Deploy the selected trained model as a production-ready **FastAPI** REST API. Us
   ├── customer_churn_dataset.csv  # Training dataset (provided)
   ├── Dockerfile               # Docker configuration
   ├── docker-compose.yml       # If using Docker Compose
-  ├── kubernetes/              # If using Kubernetes (manifests)
-  │   ├── deployment.yaml
-  │   ├── service.yaml
-  │   └── configmap.yaml
   ├── requirements.txt         # Python dependencies
   ├── README.md                # Project documentation
   └── CICD_APPROACH.md        # CI/CD pipeline approach document
@@ -174,7 +156,7 @@ Deploy the selected trained model as a production-ready **FastAPI** REST API. Us
   - Trained model files in `models/` directory (generated from training)
   - Complete FastAPI implementation with all endpoints
   - Dockerfile (tested and working)
-  - **EITHER** Kubernetes manifests (Deployment, Service, ConfigMap) **OR** docker-compose.yml
+  - Docker-compose.yml
   - Automated tests (unit and integration tests)
   - All configuration files needed to run the application
   - requirements.txt with all dependencies
@@ -212,7 +194,7 @@ Deploy the selected trained model as a production-ready **FastAPI** REST API. Us
 | **Phase 4: Deployment Setup** | 1-2 days | Create Kubernetes manifests OR docker-compose.yml, deploy and test |
 | **Phase 5: Testing & Documentation** | 1-2 days | Write tests, README, API documentation |
 
-**Total Estimated Time: 5-7 days**
+
 
 ---
 
@@ -271,17 +253,12 @@ Deploy the selected trained model as a production-ready **FastAPI** REST API. Us
 
 5. **Deploy Application**
    
-   **Option A - Using Docker Compose:**
+   ** Using Docker Compose:**
    ```bash
    docker-compose up -d
    docker-compose ps
    ```
    
-   **Option B - Using Kubernetes:**
-   ```bash
-   kubectl apply -f kubernetes/
-   kubectl get pods
-   ```
 
 6. **Run Tests**
    ```bash
